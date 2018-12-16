@@ -31,6 +31,7 @@ static int Device_Open = 0;	/* Is device open?
 				 * Used to prevent multiple access to device */
 static char msg[BUF_LEN];	/* The msg the device will give when asked */
 static char *msg_Ptr;
+static char input_buf[BUF_LEN];
 
 static struct file_operations fops = {
 	.read = device_read,
@@ -90,7 +91,7 @@ static int device_open(struct inode *inode, struct file *file)
 		return -EBUSY;
 
 	Device_Open++;
-	sprintf(msg, "I already told you %d times Hello world!\n", counter++);
+	sprintf(msg, "No request was made so far\n");
 	msg_Ptr = msg;
 	try_module_get(THIS_MODULE);
 
@@ -163,6 +164,14 @@ static ssize_t device_read(struct file *filp,	/* see include/linux/fs.h   */
 static ssize_t
 device_write(struct file *filp, const char *buff, size_t len, loff_t * off)
 {
-	printk(KERN_ALERT "Sorry, this operation isn't supported.\n");
-	return -EINVAL;
+        int i;
+        for (i = 0; i < BUF_LEN && i < len; i++)
+                get_user(input_buf[i], buff+i);
+
+        // clean up msg arr
+        // parce command
+        // do actions and write result into msg
+        msg_Ptr = msg;
+
+        return i;
 }
