@@ -29,9 +29,18 @@ static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
 static int Major;		/* Major number assigned to our device driver */
 static int Device_Open = 0;	/* Is device open?
 				 * Used to prevent multiple access to device */
+
+#define NAME_LEN 30;
+#define NUMBER_LEN 10;
+#define BOOK_LEN 100;
+static struct record {
+        char[NAME_LEN] name;
+        char[NUMBER_LEN] number;
+};
 static char msg[BUF_LEN];	/* The msg the device will give when asked */
 static char *msg_Ptr;
 static char input_buf[BUF_LEN];
+static struct record book[BOOK_LEN];
 
 static struct file_operations fops = {
 	.read = device_read,
