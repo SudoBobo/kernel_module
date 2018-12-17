@@ -1,16 +1,8 @@
-/*
- *  chardev.c: Creates a read-only char device that says how many times
- *  you've read from the dev file
- */
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>	/* for put_user */
+#include <asm/uaccess.h>
 
-/*
- *  Prototypes - this would normally go in a .h file
- */
 int init_module(void);
 void cleanup_module(void);
 static int device_open(struct inode *, struct file *);
@@ -20,7 +12,7 @@ static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
 
 #define SUCCESS 0
 #define DEVICE_NAME "chardev"	/* Dev name as it appears in /proc/devices   */
-#define BUF_LEN 80		/* Max length of the message from the device */
+#define BUF_LEN 80
 
 /*
  * Global variables are declared as static, so are global within the file.
@@ -30,17 +22,19 @@ static int Major;		/* Major number assigned to our device driver */
 static int Device_Open = 0;	/* Is device open?
 				 * Used to prevent multiple access to device */
 
-#define NAME_LEN 30;
-#define NUMBER_LEN 10;
 #define BOOK_LEN 100;
 static struct record {
-        char[NAME_LEN] name;
-        char[NUMBER_LEN] number;
+        char[BUF_LEN] name;
+        char[BUF_LEN] mail;
 };
-static char msg[BUF_LEN];	/* The msg the device will give when asked */
+static char msg[BUF_LEN];
 static char *msg_Ptr;
 static char input_buf[BUF_LEN];
-static struct record book[BOOK_LEN];
+static struct record boo[BOOK_LEN];
+static int curr_book_size;
+
+static char[BUF_LEN] token_1;
+static char[BUF_LEN] token_2;
 
 static struct file_operations fops = {
 	.read = device_read,
@@ -49,12 +43,10 @@ static struct file_operations fops = {
 	.release = device_release
 };
 
-/*
- * This function is called when the module is loaded
- */
 int init_module(void)
 {
         Major = register_chrdev(0, DEVICE_NAME, &fops);
+        curr_book_size = 0;
 
 	if (Major < 0) {
 	  printk(KERN_ALERT "Registering char device failed with %d\n", Major);
@@ -71,9 +63,6 @@ int init_module(void)
 	return SUCCESS;
 }
 
-/*
- * This function is called when the module is unloaded
- */
 void cleanup_module(void)
 {
 	/*
@@ -84,14 +73,6 @@ void cleanup_module(void)
 		printk(KERN_ALERT "Error in unregister_chrdev: %d\n", ret);
 }
 
-/*
- * Methods
- */
-
-/*
- * Called when a process tries to open the device file, like
- * "cat /dev/mycharfile"
- */
 static int device_open(struct inode *inode, struct file *file)
 {
 	static int counter = 0;
@@ -107,69 +88,168 @@ static int device_open(struct inode *inode, struct file *file)
 	return SUCCESS;
 }
 
-/*
- * Called when a process closes the device file.
- */
 static int device_release(struct inode *inode, struct file *file)
 {
 	Device_Open--;		/* We're now ready for our next caller */
-
-	/*
-	 * Decrement the usage count, or else once you opened the file, you'll
-	 * never get get rid of the module.
-	 */
 	module_put(THIS_MODULE);
 
 	return 0;
 }
 
-/*
- * Called when a process, which already opened the dev file, attempts to
- * read from it.
- */
 static ssize_t device_read(struct file *filp,	/* see include/linux/fs.h   */
 			   char *buffer,	/* buffer to fill with data */
 			   size_t length,	/* length of the buffer     */
 			   loff_t * offset)
 {
-	/*
-	 * Number of bytes actually written to the buffer
-	 */
 	int bytes_read = 0;
 
-	/*
-	 * If we're at the end of the message,
-	 * return 0 signifying end of file
-	 */
 	if (*msg_Ptr == 0)
 		return 0;
 
-	/*
-	 * Actually put the data into the buffer
-	 */
 	while (length && *msg_Ptr) {
-
-		/*
-		 * The buffer is in the user data segment, not the kernel
-		 * segment so "*" assignment won't work.  We have to use
-		 * put_user which copies data from the kernel data segment to
-		 * the user data segment.
-		 */
 		put_user(*(msg_Ptr++), buffer++);
 
 		length--;
 		bytes_read++;
 	}
 
-	/*
-	 * Most read functions return the number of bytes put into the buffer
-	 */
 	return bytes_read;
 }
 
-/*
- * Called when a process writes to dev file: echo "hi" > /dev/hello
- */
+// compare 'bigger' and 'lesser' from the very beginning of both strings,
+// stops when 'lesser' ends
+static int
+my_strcmp(char []bigger, char []lesser)
+{
+        int i = 0;
+        while (lesser[i] != 0) {
+                if (bigger[i] != lesser[i]) {
+                        return 0;
+                }
+                i++;
+        }
+        return 1;
+}
+
+// write from 'from' to 'dst' till the end of 'from' (0) will be reached
+static int
+my_write(chat []dst, char []from)
+{
+        int i = 0;
+        while (from[i] != 0) {
+                dst[i] = from[i];
+                i++;
+        }
+}
+
+// parse command and save it's arguments into token_1 and token_2
+static void
+tokenize_command(char []command, int cmd_number)
+{
+        if (cmd_number == 1){
+                // name starts at idx == 4
+                int idx = 4;
+                while (command[idx] != ' '){
+                        token_1[idx - 4] = command[idx];
+                        idx++;
+                }
+
+                // now idx points to the first char of mail
+                idx++;
+                int offset = idx;
+                while (command[idx] != 0) {
+                        token_2[idx - offset] = command[idx];
+                        idx++;
+                }
+                return;
+        }
+
+        if (cmd_number == 2 || cmd_number == 3) {
+                // name or mail starts at idx == 13
+                int idx = 13;
+                while (command[idx] != 0) {
+                        token_1[idx - 13] = command[idx];
+                }
+                return;
+         }
+}
+
+}
+
+static void
+clean_buffer(char []buf)
+{
+        size_t size = sizeof(buf)/sizeof(buf[0]);
+        int i;
+        for (i = 0; i < size; i++)
+                buf[i] = 0;
+}
+
+static int
+which_command(char []buf)
+{
+        if (my_strcmp(buf, "add"))
+                return 1;
+
+        if (my_strcmp(buf, "find_by_name"))
+                return 2;
+
+        if (my_strcmp(buf, "find_by_mail"))
+                return 3;
+
+        return 0;
+}
+
+static void
+execute_command(char []input, int cmd_number, char []result)
+{
+        tokenize_command(input, cmd_number);
+        if (cmd_number == 1){
+                if (curr_book_size == BOOK_LEN){
+                        my_write(result, "Phone book is full");
+                } else {
+                        my_write(book[curr_book_size].name, token_1);
+                        my_write(book[curr_book_size].mail, token_2);
+                        curr_book_size++;
+                        my_write(result, "New record is added to the book";
+                }
+                return;
+        }
+
+
+        ir (cmd_number == 2){
+                int k;
+                for (k = 0; k < curr_book_size; k++) {
+                        if (my_strcmp(book[k].name, token_1)) {
+                                my_write(result, "name = %s, mail = %s\n");
+                                sprintf(result, sizeof(result),
+                                        book[k].name, book[k].mail);
+                                return;
+                        }
+                }
+
+                my_write(result, "No person with such name was found");
+                return;
+        }
+
+
+        if (cmd_number == 3){
+                int c;
+                for (c = 0; c < curr_book_size; c++) {
+                        if(my_strcmp(book[c].mail, token_1)) {
+                                my_write(result, "name = %s, mail = %s\n");
+                                sprintf(result, sizeof(result),
+                                        book[c].name, book[c].mail);
+                                return;
+                        }
+                }
+
+                my_write(result, "No person with such name was found");
+                return;
+        }
+}
+
+
 static ssize_t
 device_write(struct file *filp, const char *buff, size_t len, loff_t * off)
 {
@@ -177,9 +257,13 @@ device_write(struct file *filp, const char *buff, size_t len, loff_t * off)
         for (i = 0; i < BUF_LEN && i < len; i++)
                 get_user(input_buf[i], buff+i);
 
-        // clean up msg arr
-        // parce command
-        // do actions and write result into msg
+
+        int cmd_number = which_command(input_buf)
+        if (cmd_number != 0)
+                clean_buffer(msg);
+                execute_command(input_buf, cmd_number, msg);
+
+        clean_buffer(input_buf);
         msg_Ptr = msg;
 
         return i;
