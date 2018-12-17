@@ -61,9 +61,6 @@ int init_module(void)
 
 void cleanup_module(void)
 {
-	/*
-	 * Unregister the device
-	 */
 	int ret = unregister_chrdev(Major, DEVICE_NAME);
 	if (ret < 0)
 		printk(KERN_ALERT "Error in unregister_chrdev: %d\n", ret);
@@ -218,7 +215,7 @@ execute_command(char []input, int cmd_number, char []result)
                 for (k = 0; k < curr_book_size; k++) {
                         if (my_strcmp(book[k].name, token_1)) {
                                 my_write(result, "name = %s, mail = %s\n");
-                                sprintf(result, sizeof(result),
+                                snprintf(result, sizeof(result),
                                         book[k].name, book[k].mail);
                                 return;
                         }
@@ -234,7 +231,7 @@ execute_command(char []input, int cmd_number, char []result)
                 for (c = 0; c < curr_book_size; c++) {
                         if(my_strcmp(book[c].mail, token_1)) {
                                 my_write(result, "name = %s, mail = %s\n");
-                                sprintf(result, sizeof(result),
+                                snprintf(result, sizeof(result),
                                         book[c].name, book[c].mail);
                                 return;
                         }
