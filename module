@@ -214,8 +214,7 @@ execute_command(char []input, int cmd_number, char []result)
                 int k;
                 for (k = 0; k < curr_book_size; k++) {
                         if (my_strcmp(book[k].name, token_1)) {
-                                my_write(result, "name = %s, mail = %s\n");
-                                snprintf(result, sizeof(result),
+                                sprintf(result, "name = %s, mail = %s\n",
                                         book[k].name, book[k].mail);
                                 return;
                         }
@@ -230,9 +229,8 @@ execute_command(char []input, int cmd_number, char []result)
                 int c;
                 for (c = 0; c < curr_book_size; c++) {
                         if(my_strcmp(book[c].mail, token_1)) {
-                                my_write(result, "name = %s, mail = %s\n");
-                                snprintf(result, sizeof(result),
-                                        book[c].name, book[c].mail);
+                                sprintf(result, "name = %s, mail = %s\n",
+                                        book[k].name, book[k].mail);
                                 return;
                         }
                 }
